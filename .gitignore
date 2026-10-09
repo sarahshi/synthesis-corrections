@@ -1,0 +1,4 @@
+.DS_Store
+.streamlit/secrets.toml
+local_submissions/
+__pycache__/
