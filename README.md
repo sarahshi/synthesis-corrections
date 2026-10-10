@@ -29,7 +29,8 @@ Two tables, linked by `submission_id`:
 2. In Google Cloud, create a project, enable the **Google Sheets API**, create a **service account**, and
    download a JSON key for it.
 3. Share the Sheet with the service account's `client_email` as an **Editor**.
-4. Copy `.streamlit/secrets.toml.example` to `.streamlit/secrets.toml` and fill it in from the JSON key.
+4. Run `python make_secrets.py path/to/key.json <sheet key>` to write `.streamlit/secrets.toml`
+   (or copy `.streamlit/secrets.toml.example` and fill it in by hand).
    On Streamlit Community Cloud, paste the same contents into the app's **Settings → Secrets** instead.
 
 The app creates the `submissions` and `corrections` worksheets, with headers, on the first report.
