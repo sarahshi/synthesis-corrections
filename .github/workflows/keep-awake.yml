@@ -70,6 +70,14 @@ jobs:
                       context.storage_state(path=state)
                       sys.exit(0)
                   page.wait_for_timeout(5_000)
+              # Say why in the log: the text the page shows (an error, a resource-limit notice, ...)
+              for frame in page.frames:
+                  try:
+                      text = frame.locator("body").inner_text(timeout=5_000).strip()
+                  except Exception:
+                      continue
+                  if text:
+                      print(f"--- {frame.url}\n{text[:2000]}")
               page.screenshot(path="app.png", full_page=True)
               sys.exit("App did not render within 5 minutes")
       - if: failure()

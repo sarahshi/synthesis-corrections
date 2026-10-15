@@ -11,6 +11,10 @@ SUBMISSION_FIELDS = [
     "submitter_name", "submitter_email", "submitter_affiliation", "credit_ok",
     "databases", "citation_author", "citation_year", "citation_title", "citation_doi", "citation_db_id",
     "error_location", "error_types", "scope", "detection_methods", "evidence_location", "comments",
+    # Added after the first deployment, so they go at the end and existing sheets keep lining up
+    "submitter_orcid", "submitter_role",
+    "submitted_at_local", "submitter_timezone", "form_started_at", "seconds_to_complete",
+    "n_corrections", "corrections_source", "warnings_at_submit", "session_ref", "user_agent", "app_version",
 ]
 # ... and one row per correction, linked by submission_id.
 CORRECTION_FIELDS = [
@@ -27,6 +31,8 @@ class SheetStore:
     def __init__(self, credentials, sheet_key):
         import gspread  # only needed when a Sheet is configured
         book = gspread.service_account_from_dict(credentials).open_by_key(sheet_key)
+        # Each worksheet with its header row: values are written under the column with their name, so
+        # curators can add or reorder columns in the Sheet without breaking new rows
         self.sheets = {name: self._worksheet(book, name, fields) for name, fields in
                        [("submissions", SUBMISSION_FIELDS), ("corrections", CORRECTION_FIELDS)]}
 
@@ -37,18 +43,23 @@ class SheetStore:
             ws = book.worksheet(name)
         except gspread.WorksheetNotFound:
             ws = book.add_worksheet(name, rows=1000, cols=len(fields))
-        if not ws.row_values(1):
-            ws.append_row(fields)
-        return ws
+        header = ws.row_values(1)
+        missing = [f for f in fields if f not in header]
+        if missing:  # a new sheet, or fields added to the app since: add their columns at the end
+            header += missing
+            if ws.col_count < len(header):
+                ws.add_cols(len(header) - ws.col_count)
+            ws.update(range_name="A1", values=[header])
+        return ws, header
 
     def append(self, submission, corrections):
         # Corrections first: a submission row only appears once all of its corrections are saved,
         # so a failure partway never leaves a submission that looks complete but isn't.
         if corrections:
-            self.sheets["corrections"].append_rows(
-                [[str(c.get(f, "")) for f in CORRECTION_FIELDS] for c in corrections], value_input_option="RAW")
-        self.sheets["submissions"].append_row(
-            [str(submission.get(f, "")) for f in SUBMISSION_FIELDS], value_input_option="RAW")
+            ws, header = self.sheets["corrections"]
+            ws.append_rows([[str(c.get(f, "")) for f in header] for c in corrections], value_input_option="RAW")
+        ws, header = self.sheets["submissions"]
+        ws.append_row([str(submission.get(f, "")) for f in header], value_input_option="RAW")
 
 
 class LocalStore:
@@ -63,6 +74,15 @@ class LocalStore:
     def _append(self, name, fields, rows):
         path = self.folder / f"{name}.csv"
         new = not path.exists()
+        if not new:  # fields added since the file was started: rewrite it with the new header
+            with path.open(newline="") as f:
+                reader = csv.DictReader(f)
+                old_rows, old_fields = list(reader), reader.fieldnames
+            if old_fields != fields:
+                with path.open("w", newline="") as f:
+                    writer = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore")
+                    writer.writeheader()
+                    writer.writerows(old_rows)
         with path.open("a", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore")
             if new:

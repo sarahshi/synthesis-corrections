@@ -19,7 +19,11 @@ With no secrets configured, reports are saved to `local_submissions/submissions.
 Two tables, linked by `submission_id`:
 
 - **submissions**: one row per report (submitter, citation, databases, error location and types, scope,
-  evidence, comments, and a `status` column starting at `new` for curators to update).
+  evidence, comments, and a `status` column starting at `new` for curators to update). The last columns
+  are recorded automatically: submission time in UTC and in the submitter's time zone, when they opened
+  the form and how many seconds it took, how many corrections and whether they were typed or uploaded,
+  any warnings showing at submission, a `session_ref` shared by reports sent from one visit, the browser,
+  and the app's git commit.
 - **corrections**: one row per corrected value (sample name, database ID, variable, current value,
   suggested value, unit, note).
 

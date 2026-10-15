@@ -1,0 +1,4 @@
+[server]
+# In MB. A corrections file is a few KB; this stops a whole database export from being uploaded
+# into the app's memory (Community Cloud stops apps that go over about 1 GB).
+maxUploadSize = 5
